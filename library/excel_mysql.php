@@ -1,8 +1,9 @@
 <?php
 	$type_map = array(
-		'varchar' => '^varchar[(][0-9]*[)]$',
+		'varchar' => 'string',
 		'char' => 'string',
 		'text' => 'string',
+		'int' => 'double'
 	);
 	class Excel_mysql {
 		/**
@@ -204,15 +205,14 @@
 								// Проверяем, что ячейка не объединенная: если нет, то берем ее значение, иначе значение первой объединенной ячейки
 								$value = strlen($merged_value) == 0 ? $cell->getValue() : $merged_value;
 
-								// Если задан массив функций с условиями
-								var_dump($columns_names[$column]);
-								$tempTableType = preg_replace('/\s+/', '', $table_types[$column]);
-								echo preg_match('/^[A-Za-z0-9]+$/', "ss");
-								echo $tempTableType;
-								var_dump(($value));
-								// var_dump(^varchar[(][0-9]*[)]$);
-								echo $table_types[$column];
-								echo "<br>";
+								// cross check table values and data type.
+								$tempColType = preg_replace('/[(][0-9]*[)]/', '', (preg_replace('/\s+/', '', $table_types[$column])));
+								if(array_key_exists($tempColType, $type_map) and $type_map[$tempColType] != gettype($value)){
+									throw new \Exception("Data type Error in Sheet  ".$table_name. ", Column : '".$columns_names[$column]."' and Row No ".$row);
+									return false;
+								}
+
+								//If an array of functions with conditions is specified 
 								if ($condition_functions) {
 									if (isset($condition_functions[$columns_names[$column]])) {
 										// Проверяем условие
