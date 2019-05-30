@@ -350,7 +350,7 @@
 		 * @return bool - Флаг, удалось ли выполнить функцию в полном объеме
 		 */
 		public
-		function excel_to_mysql_by_index($table_name, $index = 0, $columns_names = 0, $start_row_index = false, $condition_functions = false, $transform_functions = false, $unique_column_for_update = false, $table_types = false, $table_keys = false, $table_encoding = "utf8_general_ci", $table_engine = "InnoDB") {
+		function excel_to_mysql_by_index($table_name, $index = 0, $columns_names = 0, $start_row_index = false, $condition_functions = false, $transform_functions = false, $unique_column_for_update = 1, $table_types = false, $table_keys = false, $table_encoding = "utf8_general_ci", $table_engine = "InnoDB") {
 			// Загружаем файл Excel
 			$PHPExcel_file = \PHPExcel_IOFactory::load($this->excel_file);
 

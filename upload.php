@@ -18,6 +18,7 @@ if(isset($_POST["submit"])) {
 			$arrayCount = count($allDataInSheet);  // Here get total count of row in that Excel sheet
 			$rowIndex=2;
 			$nullLineIndex=0;
+			$sheetNo=1;
 			//if db name in template is default or null then file name will be taken else value given in template is taken for DB creation
 			$DB_Info_from_template  = (strtolower($allDataInSheet[0][1]) == "default" || strtolower($allDataInSheet[0][1]) == null) ? $fileName : $allDataInSheet[0][1];
 			echo "Data base Name : ".$DB_Info_from_template;
@@ -54,21 +55,20 @@ if(isset($_POST["submit"])) {
 			if($DB_Created){
 				mysqli_select_db($conn,$DB_Info_from_template);
 				$excel_mysqlt = new Excel_mysql($conn, $_FILES["fileToUpload"]["tmp_name"]);
-				echo $excel_mysqlt->excel_to_mysql_by_index("fyit", 1, $allDataInSheet[3], $start_row_index = 2, false, false, false, $allDataInSheet[4]) ? "OK\n" : "FAIL\n";
+				echo "<br>";
+				while($arrayCount>= $rowIndex){
+					echo json_encode($allDataInSheet[$rowIndex]);
+					echo "<br>";
+					$nullLineIndex++;
+					if($nullLineIndex==3){
+						echo $excel_mysqlt->excel_to_mysql_by_index($allDataInSheet[$rowIndex-2][1], $sheetNo, $allDataInSheet[$rowIndex-1], $start_row_index = 2, false, false, false, $allDataInSheet[$rowIndex]) ? "OK\n" : "FAIL\n";
+						$sheetNo++;
+						$rowIndex++;
+						$nullLineIndex=0;
+					}
+					$rowIndex++;
+				}
 			}
-
-
-			// echo "<br>";
-			// while($arrayCount>= $rowIndex){
-			// 	echo json_encode($allDataInSheet[$rowIndex]);
-			// 	echo "<br>";
-			// 	$nullLineIndex++;
-			// 	if($nullLineIndex==3){
-			// 		$rowIndex++;
-			// 		$nullLineIndex=0;
-			// 	}
-			// 	$rowIndex++;
-			// }
 		} catch(Exception $e) {
             die('Error loading file "'.pathinfo($inputFileName,PATHINFO_BASENAME).'": '.$e->getMessage());
 		}
