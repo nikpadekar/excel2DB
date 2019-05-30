@@ -1,32 +1,32 @@
 <?php
-
-	/**
-	 * Класс импорта файла Excel в таблицу MySQL и экспорта таблицы MySQL в файл Excel
-	 *
-	 * Некоторые строки не включены в проверку кода, т.к. не все ситуации можно проверить (например, при работе с БД) или участки кода не выполняются интерпретатором и не проходят проверку, например, закрытие (}) блоков
-	 */
+	$type_map = array(
+		'varchar' => '^varchar[(][0-9]*[)]$',
+		'char' => 'string',
+		'text' => 'string',
+	);
 	class Excel_mysql {
 		/**
-		 * @var mysqli - Подключение к базе данных
+		 * @var mysqli -Database connection
 		 */
 		private $mysql_connect;
+
 		/**
-		 * @var string - Имя файла для импорта/экспорта
+		 * @var string -File name for import /export
 		 */
 		private $excel_file;
 
 		/**
-		 * Конструктор класса
+		 * Class constructor
 		 *
-		 * @param mysqli $connection - Подключение к базе данных
-		 * @param string $filename   - Имя файла для импорта/экспорта
+		 * @param mysqli $ connection -Database connection
+		 * @param string $ filename -File name for import /export
 		 *
-		 * @throws Exception - Не найдена библиотека PHPExcel
+		 * @throws Exception -PHPExcel library not found
 		 */
 		function __construct($connection, $filename) {
-			// Если библиотека PHPExcel не подключена
+			//If PHPExcel Library Is Not Connected
 			if (!class_exists("\\PHPExcel")) {
-				// Выбрасываем исключение
+				//Throw an exception
 				throw new \Exception("PHPExcel library required!");
 			}
 
@@ -53,34 +53,35 @@
 		 */
 		private
 		function excel_to_mysql($worksheet, $table_name, $columns_names, $start_row_index, $condition_functions, $transform_functions, $unique_column_for_update, $table_types, $table_keys, $table_encoding, $table_engine) {
-			// Проверяем соединение с MySQL
+			// Check MySQL Connection 
 			if (!$this->mysql_connect->connect_error) {
-				// Строка для названий столбцов таблицы MySQL
+				// Row for column names of MySQL table
 				$columns = array();
-
-				// Количество столбцов на листе Excel
+				global $type_map;
+				// Number of columns on Excel sheet
 				$columns_count = \PHPExcel_Cell::columnIndexFromString($worksheet->getHighestColumn());
 
-				// Если в качестве имен столбцов передан массив, то проверяем соответствие его длинны с количеством столбцов
+				// If an array is passed as the column name, then we check its compliance with the number of columns 
 				if ($columns_names) {
 					if (is_array($columns_names)) {
-						$columns_names_count = count($columns_names);
+						$columns_names_count = count(array_filter($columns_names));
 
-						if ($columns_names_count < $columns_count) {
+						if ($columns_names_count != $columns_count) {
+							throw new \Exception("No of Columns Names in template and No of Columns Names in sheet Does not match for Sheet Name ".$table_name);
 							return false;
-						} elseif ($columns_names_count > $columns_count) {
-							$columns_count = $columns_names_count;
-						}
+						} 
 					} else {
+						throw new \Exception("Unknown error for column name array creation for sheet ".$table_name);
 						return false;
 					}
 				}
 
-				// Если указаны типы столбцов
+				// If column types are specified
 				if ($table_types) {
 					if (is_array($table_types)) {
-						// Проверяем количество столбцов и типов
+						// Check the number of columns and types
 						if (count($table_types) != count($columns_names)) {
+							throw new \Exception("No of Columns Name array and No of Data Types array Does not match in template for Sheet Name ".$table_name);
 							return false;
 						}
 					} else {
@@ -90,7 +91,7 @@
 
 				$table_name = "`{$table_name}`";
 
-				// Проверяем, что $columns_names - массив и $unique_column_for_update находиться в его пределах
+				// Check that $columns_names is an array and $unique_column_for_update is located within it
 				if ($unique_column_for_update) {
 					$unique_column_for_update = is_array($columns_names) ? ($unique_column_for_update <= count($columns_names) ? "`{$columns_names[$unique_column_for_update - 1]}`" : false) : false;
 				}
@@ -98,7 +99,6 @@
 				// Перебираем столбцы листа Excel и генерируем строку с именами через запятую
 				for ($column = 0; $column < $columns_count; $column++) {
 					$column_name = (is_array($columns_names) ? $columns_names[$column] : ($columns_names == 0 ? "column{$column}" : $worksheet->getCellByColumnAndRow($column, $columns_names)->getValue()));
-
 					$columns[] = $column_name ? "`{$column_name}`" : null;
 				}
 
@@ -205,6 +205,14 @@
 								$value = strlen($merged_value) == 0 ? $cell->getValue() : $merged_value;
 
 								// Если задан массив функций с условиями
+								var_dump($columns_names[$column]);
+								$tempTableType = preg_replace('/\s+/', '', $table_types[$column]);
+								echo preg_match('/^[A-Za-z0-9]+$/', "ss");
+								echo $tempTableType;
+								var_dump(($value));
+								// var_dump(^varchar[(][0-9]*[)]$);
+								echo $table_types[$column];
+								echo "<br>";
 								if ($condition_functions) {
 									if (isset($condition_functions[$columns_names[$column]])) {
 										// Проверяем условие
@@ -349,6 +357,7 @@
 		 *
 		 * @return bool - Флаг, удалось ли выполнить функцию в полном объеме
 		 */
+
 		public
 		function excel_to_mysql_by_index($table_name, $index = 0, $columns_names = 0, $start_row_index = false, $condition_functions = false, $transform_functions = false, $unique_column_for_update = 1, $table_types = false, $table_keys = false, $table_encoding = "utf8_general_ci", $table_engine = "InnoDB") {
 			// Загружаем файл Excel

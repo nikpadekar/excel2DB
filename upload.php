@@ -14,13 +14,13 @@ if(isset($_POST["submit"])) {
 		try{
 			$objPHPExcel = PHPExcel_IOFactory::load($_FILES["fileToUpload"]["tmp_name"]);
 			$fileName = pathinfo($_FILES["fileToUpload"]["name"], PATHINFO_FILENAME); // returns file name
-			$allDataInSheet = $objPHPExcel->getSheetByName('templete')->toArray(null);
+			$allDataInSheet = $objPHPExcel->getSheetByName('templete')->toArray(Null);
 			$arrayCount = count($allDataInSheet);  // Here get total count of row in that Excel sheet
 			$rowIndex=2;
 			$nullLineIndex=0;
 			$sheetNo=1;
 			//if db name in template is default or null then file name will be taken else value given in template is taken for DB creation
-			$DB_Info_from_template  = (strtolower($allDataInSheet[0][1]) == "default" || strtolower($allDataInSheet[0][1]) == null) ? $fileName : $allDataInSheet[0][1];
+			$DB_Info_from_template  = (strtolower($allDataInSheet[0][1]) == "default" || strtolower($allDataInSheet[0][1]) == Null) ? $fileName : $allDataInSheet[0][1];
 			echo "Data base Name : ".$DB_Info_from_template;
 			echo "<br>";
 			// Change database to "test"
@@ -48,8 +48,7 @@ if(isset($_POST["submit"])) {
 					echo "<br>";
 					$DB_Created = true;
 				}else{
-					echo "Error creating database: " . $conn->error;
-					echo "<br>";
+					throw new \Exception("Error creating database: " . $conn->error);
 				}
 			}
 			if($DB_Created){
@@ -57,11 +56,15 @@ if(isset($_POST["submit"])) {
 				$excel_mysqlt = new Excel_mysql($conn, $_FILES["fileToUpload"]["tmp_name"]);
 				echo "<br>";
 				while($arrayCount>= $rowIndex){
-					echo json_encode($allDataInSheet[$rowIndex]);
+					$table_name= $allDataInSheet[$rowIndex-2][1];
+					$columns_names=$allDataInSheet[$rowIndex-1];
+					// $start_row_index=
+					$table_types=$allDataInSheet[$rowIndex];
+					var_dump(array_filter($allDataInSheet[$rowIndex]));
 					echo "<br>";
 					$nullLineIndex++;
 					if($nullLineIndex==3){
-						echo $excel_mysqlt->excel_to_mysql_by_index($allDataInSheet[$rowIndex-2][1], $sheetNo, $allDataInSheet[$rowIndex-1], $start_row_index = 2, false, false, false, $allDataInSheet[$rowIndex]) ? "OK\n" : "FAIL\n";
+						echo $excel_mysqlt->excel_to_mysql_by_index($table_name, $sheetNo, $columns_names, $start_row_index = 2, false, false, false, $table_types) ? "OK\n" : "FAIL\n";
 						$sheetNo++;
 						$rowIndex++;
 						$nullLineIndex=0;
@@ -70,7 +73,7 @@ if(isset($_POST["submit"])) {
 				}
 			}
 		} catch(Exception $e) {
-            die('Error loading file "'.pathinfo($inputFileName,PATHINFO_BASENAME).'": '.$e->getMessage());
+            die('Error Occured ": '.$e->getMessage());
 		}
 		
 	}else{
