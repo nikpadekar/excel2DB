@@ -35,25 +35,10 @@
 			$this->excel_file    = $filename;
 		}
 
-		/**
-		 * Функция преобразования листа Excel в таблицу MySQL, с учетом объединенных строк и столбцов. Значения берутся уже вычисленными
-		 *
-		 * @param PHPExcel_Worksheet $worksheet                - Лист Excel
-		 * @param string             $table_name               - Имя таблицы MySQL
-		 * @param int|array          $columns_names            - Строка или массив с именами столбцов таблицы MySQL (0 - имена типа column + n). Если указано больше столбцов, чем на листе Excel, будут использованы значения по умолчанию указанных типов столбцов. Если указано ложное значение (null, false, "", 0, -1...) столбец игнорируется
-		 * @param bool|int           $start_row_index          - Номер строки, с которой начинается обработка данных (например, если 1 строка шапка таблицы). Нумерация начинается с 1, как в Excel
-		 * @param bool|array         $condition_functions      - Массив функций с условиями добавления строки по значению столбца (столбец => функция)
-		 * @param bool|array         $transform_functions      - Массив функций для изменения значения столбца (столбец => функция)
-		 * @param bool|int           $unique_column_for_update - Номер столбца с уникальным значением для обновления таблицы. Работает если $columns_names - массив (название столбца берется из него по [$unique_column_for_update - 1])
-		 * @param bool|array         $table_types              - Типы столбцов таблицы (используется при создании таблицы), в SQL формате - "INT(11) NOT NULL". Если не указаны, то используется "TEXT NOT NULL"
-		 * @param bool|array         $table_keys               - Ключевые поля таблицы (тип => столбец)
-		 * @param string             $table_encoding           - Кодировка таблицы MySQL
-		 * @param string             $table_engine             - Тип таблицы MySQL
-		 *
-		 * @return bool - Флаг, удалось ли выполнить функцию в полном объеме
-		 */
 		private
 		function excel_to_mysql($worksheet, $table_name, $columns_names, $start_row_index, $condition_functions, $transform_functions, $unique_column_for_update, $table_types, $table_keys, $table_encoding, $table_engine) {
+			$columns_names = array_map('strtolower', array_map('trim',array_filter($columns_names)));
+			$table_types = array_map('strtolower', array_map('trim',array_filter($table_types)));
 			// Check MySQL Connection 
 			if (!$this->mysql_connect->connect_error) {
 				// Row for column names of MySQL table
@@ -62,11 +47,17 @@
 				// Number of columns on Excel sheet
 				$columns_count = \PHPExcel_Cell::columnIndexFromString($worksheet->getHighestColumn());
 
+				
 				// If an array is passed as the column name, then we check its compliance with the number of columns 
 				if ($columns_names) {
 					if (is_array($columns_names)) {
+						
+						$columns_names_fromSheet = array_map('strtolower', array_map('trim',array_filter($worksheet->toArray(Null)[0])));
+						if(array_diff($columns_names,$columns_names_fromSheet) && ($columns_names != $columns_names_fromSheet)){
+							throw new \Exception("Please check columns Names and sequence For ".$table_name." in template as well as in sheet");
+							return false;
+						}
 						$columns_names_count = count(array_filter($columns_names));
-
 						if ($columns_names_count != $columns_count) {
 							throw new \Exception("No of Columns Names in template and No of Columns Names in sheet Does not match for Sheet Name ".$table_name);
 							return false;
@@ -208,7 +199,7 @@
 								// cross check table values and data type.
 								$tempColType = preg_replace('/[(][0-9]*[)]/', '', (preg_replace('/\s+/', '', $table_types[$column])));
 								if(array_key_exists($tempColType, $type_map) and $type_map[$tempColType] != gettype($value)){
-									throw new \Exception("Data type Error in Sheet  ".$table_name. ", Column : '".$columns_names[$column]."' and Row No ".$row);
+									throw new \Exception("DataType Error in Sheet  ".$table_name. ", Column : '".$columns_names[$column]."' and Row No ".$row."<br>Required : ".$type_map[$tempColType]." ( ".$tempColType." ) <br>Given : ".gettype($value));
 									return false;
 								}
 
@@ -331,8 +322,10 @@
 						}
 
 						return true;
+					}else{
+						throw new \Exception("Please verify size of Datatype and their total should match your Database criteria for ".$table_name." sheet.");
+						return false;
 					}
-					// @codeCoverageIgnoreStart
 				}
 			}
 

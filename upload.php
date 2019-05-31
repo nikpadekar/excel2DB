@@ -60,11 +60,12 @@ if(isset($_POST["submit"])) {
 					$columns_names=$allDataInSheet[$rowIndex-1];
 					// $start_row_index=
 					$table_types=$allDataInSheet[$rowIndex];
-					var_dump(array_filter($allDataInSheet[$rowIndex]));
-					echo "<br>";
+					// var_dump(array_filter($allDataInSheet[$rowIndex]));
 					$nullLineIndex++;
 					if($nullLineIndex==3){
+						echo "Creating Table for sheet ".$table_name."<br>";
 						echo $excel_mysqlt->excel_to_mysql_by_index($table_name, $sheetNo, $columns_names, $start_row_index = 2, false, false, false, $table_types) ? "OK\n" : "FAIL\n";
+						echo "<br><br>";
 						$sheetNo++;
 						$rowIndex++;
 						$nullLineIndex=0;
@@ -73,7 +74,7 @@ if(isset($_POST["submit"])) {
 				}
 			}
 		} catch(Exception $e) {
-            die('Error Occured ": '.$e->getMessage());
+            die('<br>Error Occured :-<br> '.$e->getMessage());
 		}
 		
 	}else{
