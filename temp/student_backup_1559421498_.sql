@@ -1,0 +1,9 @@
+
+
+DROP DATABASE student;
+
+
+
+CREATE DATABASE /*!32312 IF NOT EXISTS*/ `student` /*!40100 DEFAULT CHARACTER SET latin1 */;
+USE `student`;
+

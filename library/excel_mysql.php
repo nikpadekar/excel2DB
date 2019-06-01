@@ -175,7 +175,7 @@
 		}
 
 		public
-		function excel_to_mysql_by_index($table_name, $index, $columns_names, $start_row_index, $table_types) {
+		function excel_to_mysql_by_index($table_name, $columns_names, $table_types) {
 			// Load the Excel file
 			$PHPExcel_file = \PHPExcel_IOFactory::load($this->excel_file);
 			$sheetNames = $PHPExcel_file->getSheetNames();
@@ -183,7 +183,7 @@
 				throw new \Exception("Sheet ".$table_name." not found.");
 			}
 			$activeSheet  = $PHPExcel_file->getSheetByName($table_name);
-			return $this->excel_to_mysql($activeSheet, $table_name, $columns_names, $start_row_index, $table_types);
+			return $this->excel_to_mysql($activeSheet, $table_name, $columns_names, $start_row_index=2, $table_types);
 		}
 
 		

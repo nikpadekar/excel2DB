@@ -2,11 +2,7 @@
 require_once __DIR__ . "/mySQLConn.php";
 require_once __DIR__ . "/PHPExcel/Classes/PHPExcel.php";
 require_once __DIR__ . "/library/excel_mysql.php";
-// $target_dir = "uploads/";
-// $target_file = $target_dir . basename($_FILES["fileToUpload"]["name"]);
-// $uploadOk = 1;
-// $imageFileType = strtolower(pathinfo($target_file,PATHINFO_EXTENSION));
-// Check if image file is a actual image or fake image
+
 $mimes = array('application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/xls','text/xlsx');
 if(isset($_POST["submit"])) {
 	if(in_array($_FILES["fileToUpload"]["type"],$mimes)){
@@ -20,8 +16,8 @@ if(isset($_POST["submit"])) {
 			}
 			$allDataInSheet = $objPHPExcel->getSheetByName('template');
 			$columns_count = \PHPExcel_Cell::columnIndexFromString($allDataInSheet->getHighestColumn());
+			if($columns_count <= 1) throw new \Exception("template is not valid ");
 			$allDataInSheet = $allDataInSheet->toArray(Null);
-			if($columns_count < 1) throw new \Exception("Uploaded file template is not valid");
 			
 			$arrayCount = count($allDataInSheet);  // Here get total count of row in that Excel sheet
 			$rowIndex=2;
@@ -67,13 +63,11 @@ if(isset($_POST["submit"])) {
 				while($arrayCount>= $rowIndex){
 					$table_name= $allDataInSheet[$rowIndex-2][1];
 					$columns_names=$allDataInSheet[$rowIndex-1];
-					// $start_row_index=
 					$table_types=$allDataInSheet[$rowIndex];
-					// var_dump(array_filter($allDataInSheet[$rowIndex]));
 					$nullLineIndex++;
 					if($nullLineIndex==3){
 						echo "Creating Table for sheet ".$table_name."<br>";
-						echo $excel_mysqlt->excel_to_mysql_by_index($table_name, $sheetNo, $columns_names, $start_row_index = 2, $table_types) ? "OK\n" : "FAIL\n";
+						echo $excel_mysqlt->excel_to_mysql_by_index($table_name,$columns_names, $table_types) ? "OK\n" : "FAIL\n";
 						echo "<br><br>";
 						array_push($tablesArr,$table_name);
 						$sheetNo++;
