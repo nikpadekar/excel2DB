@@ -55,6 +55,7 @@ if(isset($_POST["submit"])) {
 				mysqli_select_db($conn,$DB_Info_from_template);
 				$excel_mysqlt = new Excel_mysql($conn, $_FILES["fileToUpload"]["tmp_name"]);
 				echo "<br>";
+				$tablesArr = array();
 				while($arrayCount>= $rowIndex){
 					$table_name= $allDataInSheet[$rowIndex-2][1];
 					$columns_names=$allDataInSheet[$rowIndex-1];
@@ -66,12 +67,22 @@ if(isset($_POST["submit"])) {
 						echo "Creating Table for sheet ".$table_name."<br>";
 						echo $excel_mysqlt->excel_to_mysql_by_index($table_name, $sheetNo, $columns_names, $start_row_index = 2, $table_types) ? "OK\n" : "FAIL\n";
 						echo "<br><br>";
+						array_push($tablesArr,$table_name);
 						$sheetNo++;
 						$rowIndex++;
 						$nullLineIndex=0;
 					}
 					$rowIndex++;
 				}
+				echo "DataBase `".$DB_Info_from_template."` Has Been Created Successfully.<br>";
+				echo "Generating MySQL Backup FIle..<br>";
+				$excel_mysqlt->setTableArray($tablesArr);
+				
+				$backup_file_name = $excel_mysqlt->createSQLScript($DB_Info_from_template);
+				echo '<script type="text/javascript">'; 
+				echo 'window.location= "'.$backup_file_name.'";';
+				echo '</script>'; 
+				
 			}
 		} catch(Exception $e) {
             die('<br>Error Occured :-<br> '.$e->getMessage());

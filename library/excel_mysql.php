@@ -7,22 +7,20 @@
 	);
 	class Excel_mysql {
 		/**
-		 * @var mysqli -Database connection
+		 * Database connection
 		 */
 		private $mysql_connect;
 
 		/**
-		 * @var string -File name for import /export
+		 * File name for import /export
 		 */
 		private $excel_file;
 
 		/**
 		 * Class constructor
 		 *
-		 * @param mysqli $ connection -Database connection
-		 * @param string $ filename -File name for import /export
-		 *
-		 * @throws Exception -PHPExcel library not found
+		 * connection -Database connection
+		 * filename -File name for import /export
 		 */
 		function __construct($connection, $filename) {
 			//If PHPExcel Library Is Not Connected
@@ -68,8 +66,7 @@
 					}
 				}
 
-				// If column types are specified
-				if ($table_types) {
+				// column types
 					if (is_array($table_types)) {
 						// Check the number of columns and types
 						if (count($table_types) != count($columns_names)) {
@@ -77,29 +74,28 @@
 							return false;
 						}
 					} else {
+						throw new \Exception("invalid table type array generated. avoid using special characters in table types ".$table_name);
 						return false;
 					}
-				}
 
 				$table_name = "`{$table_name}`";
 
-				// Перебираем столбцы листа Excel и генерируем строку с именами через запятую
+				// Enumerate the columns of the Excel sheet and generate a row with names separated by commas 
 				for ($column = 0; $column < $columns_count; $column++) {
-					$column_name = (is_array($columns_names) ? $columns_names[$column] : ($columns_names == 0 ? "column{$column}" : $worksheet->getCellByColumnAndRow($column, $columns_names)->getValue()));
+					$column_name =$columns_names[$column];
 					$columns[] = $column_name ? "`{$column_name}`" : null;
 				}
 
 				$query_string = "DROP TABLE IF EXISTS {$table_name}";
 
-				// Удаляем таблицу MySQL, если она существовала (если не указан столбец с уникальным значением для обновления)
+				// Delete the MySQL table, if it existed
 				if ($this->mysql_connect->query($query_string)) {
 					$columns_types = $ignore_columns = array();
 
-					// Обходим столбцы и присваиваем типы
+					// Go around the columns and assign types
 					foreach ($columns as $index => $value) {
 						if ($value == null) {
 							$ignore_columns[] = $index;
-
 							unset($columns[$index]);
 						} else {
 							if ($table_types) {
@@ -110,35 +106,20 @@
 						}
 					}
 
-					$columns_keys = null;
-					
-
 					$columns_types_list = implode(", ", $columns_types);
 
 					$query_string = "CREATE TABLE IF NOT EXISTS {$table_name} ({$columns_types_list} null) COLLATE = utf8_general_ci ENGINE = InnoDB";
 
-					// @codeCoverageIgnoreStart
-					if (defined("EXCEL_MYSQL_DEBUG")) {
-						if (EXCEL_MYSQL_DEBUG) {
-							var_dump($query_string);
-						}
-					}
-					// @codeCoverageIgnoreEnd
-
-					// Создаем таблицу MySQL
+					// //Create MySQL table 
 					if ($this->mysql_connect->query($query_string)) {
-						// Коллекция значений уникального столбца для удаления несуществующих строк в файле импорта (используется при обновлении)
-						$id_list_in_import = array();
+						echo "Table : ".$table_name." Created<br>";
 
-						// Количество строк на листе Excel
+						// Number of rows in Excel sheet
 						$rows_count = $worksheet->getHighestRow();
-
-						// Получаем массив всех объединенных ячеек
-						$all_merged_cells = $worksheet->getMergeCells();
-
-						// Перебираем строки листа Excel
+					
+						// Looping through Excel sheet rows
 						for ($row = ($start_row_index ? $start_row_index : (is_array($columns_names) ? 1 : $columns_names + 1)); $row <= $rows_count; $row++) {
-							// Строка со значениями всех столбцов в строке листа Excel
+							// Row with values ​​of all columns in a row of Excel sheet 
 							$values = array();
 
 							// Перебираем столбцы листа Excel
@@ -147,29 +128,11 @@
 									continue;
 								}
 
-								// Строка со значением объединенных ячеек листа Excel
-								$merged_value = null;
-
-								// Ячейка листа Excel
+								// Excel Sheet Sheet
 								$cell = $worksheet->getCellByColumnAndRow($column, $row);
 
-								// Перебираем массив объединенных ячеек листа Excel
-								foreach ($all_merged_cells as $merged_cells) {
-									// @codeCoverageIgnoreStart
-									// Если текущая ячейка - объединенная,
-									if ($cell->isInRange($merged_cells)) {
-										// то вычисляем значение первой объединенной ячейки, и используем её в качестве значения текущей ячейки
-										$merged_value = explode(":", $merged_cells);
-
-										$merged_value = $worksheet->getCell($merged_value[0])->getValue();
-
-										break;
-									}
-									// @codeCoverageIgnoreEnd
-								}
-
-								// Проверяем, что ячейка не объединенная: если нет, то берем ее значение, иначе значение первой объединенной ячейки
-								$value = strlen($merged_value) == 0 ? $cell->getValue() : $merged_value;
+								// get cell value
+								$value = $cell->getValue();
 
 								// cross check table values and data type.
 								$tempColType = preg_replace('/[(][0-9]*[)]/', '', (preg_replace('/\s+/', '', $table_types[$column])));
@@ -181,7 +144,7 @@
 								$values[] = "'{$this->mysql_connect->real_escape_string($value)}'";
 							}
 
-							// Если количество столбцов не равно количеству значений, значит строка не прошла проверку
+							// If the number of columns is not equal to the number of values, then the string did not pass the test 
 							if ($columns_count - count($ignore_columns) != count($values)) {
 								continue;
 							}
@@ -196,34 +159,25 @@
 									return false;
 								}
 						}
-
+						echo "total Records Inserted ".((int)$row-(int)$start_row_index)."<br>";
+						echo "table :".$table_name."execution finished.";
 						return true;
 					}else{
 						throw new \Exception("Please verify size of Datatype and their total should match your Database criteria for ".$table_name." sheet.");
 						return false;
 					}
+				}else{
+					throw new \Exception("Error occured while dropping table for ".$table_name." sheet.");
+					return false;
 				}
 			}
 
 			return false;
-			// @codeCoverageIgnoreEnd
 		}
 
-		/**
-		 * Функция импорта листа Excel по индексу
-		 *
-		 * @param string     $table_name               - Имя таблицы MySQL
-		 * @param int        $index                    - Индекс листа Excel
-		 * @param int|array  $columns_names            - Строка или массив с именами столбцов таблицы MySQL (0 - имена типа column + n). Если указано больше столбцов, чем на листе Excel, будут использованы значения по умолчанию указанных типов столбцов. Если указано ложное значение (null, false, "", 0, -1...) столбец игнорируется
-		 * @param bool|int   $start_row_index          - Номер строки, с которой начинается обработка данных (например, если 1 строка шапка таблицы). Нумерация начинается с 1, как в Excel
-		 * @param bool|array $table_types              - Типы столбцов таблицы (используется при создании таблицы), в SQL формате - "INT(11)"
-		 *
-		 * @return bool - Флаг, удалось ли выполнить функцию в полном объеме
-		 */
-
 		public
-		function excel_to_mysql_by_index($table_name, $index = 0, $columns_names = 0, $start_row_index = false, $table_types = false) {
-			// Загружаем файл Excel
+		function excel_to_mysql_by_index($table_name, $index, $columns_names, $start_row_index, $table_types) {
+			// Load the Excel file
 			$PHPExcel_file = \PHPExcel_IOFactory::load($this->excel_file);
 
 			// Выбираем лист Excel
@@ -234,19 +188,30 @@
 
 		
 		/**
-		 * Геттер имени файла
-		 *
-		 * @return string - Имя файла
+		 * Getter file name
 		 */
 		public
 		function getFileName() {
 			return $this->excel_file;
 		}
-
+		
 		/**
-		 * Сеттер имени файла
-		 *
-		 * @param string $filename - Новое имя файла
+		 * get table array
+		 */
+		public
+		function getTableArray() {
+			return $this->tableArray;
+		}
+		
+		/**
+		 * set table array
+		 */
+		public
+		function setTableArray($array) {
+			$this->tableArray = $array;
+		}
+		/**
+		 * File name setter
 		 */
 		public
 		function setFileName($filename) {
@@ -254,22 +219,89 @@
 		}
 
 		/**
-		 * Геттер подключения к MySQL
-		 *
-		 * @return mysqli - Подключение MySQL
+		 *Getter connection to MySQL
 		 */
 		public
 		function getConnection() {
 			return $this->mysql_connect;
 		}
-
 		/**
-		 * Сеттер подключения к MySQL
-		 *
-		 * @param mysqli $connection - Новое подключение MySQL
-		 */
+		 *MySQL connection setter
+		 */ 
 		public
 		function setConnection($connection) {
 			$this->mysql_connect = $connection;
+		}
+
+		/**
+		 *MySQL connection setter
+		 */ 
+		public
+		function createSQLScript($DB){
+			$sqlScript = "";
+			$tables = $this->getTableArray();
+			$conn = $this->getConnection();
+			$sqlScript .= "\n\nDROP DATABASE ".$DB.";\n\n";
+			// Prepare SQLscript for creating Database structure
+			$query = "SHOW CREATE SCHEMA IF NOT EXISTS $DB";
+			$result = mysqli_query($conn, $query);
+			$row = mysqli_fetch_row($result);
+			$sqlScript .= "\n\n" . $row[1] . ";\nUSE `".$DB."`;\n\n";
+
+			foreach ($tables as $table) {
+			
+				
+				// Prepare SQLscript for creating table structure
+				$query = "SHOW CREATE TABLE $table";
+				$result = mysqli_query($conn, $query);
+				$row = mysqli_fetch_row($result);
+				
+				$sqlScript .= "\n\n" . $row[1] . ";\n\n";
+				
+				
+				$query = "SELECT * FROM $table";
+				$result = mysqli_query($conn, $query);
+				
+				$columnCount = mysqli_num_fields($result);
+				
+				// Prepare SQLscript for dumping data for each table
+				for ($i = 0; $i < $columnCount; $i ++) {
+					while ($row = mysqli_fetch_row($result)) {
+						$sqlScript .= "INSERT INTO $table VALUES(";
+						for ($j = 0; $j < $columnCount; $j ++) {
+							$row[$j] = $row[$j];
+							
+							if (isset($row[$j])) {
+								$sqlScript .= '"' . $row[$j] . '"';
+							} else {
+								$sqlScript .= '""';
+							}
+							if ($j < ($columnCount - 1)) {
+								$sqlScript .= ',';
+							}
+						}
+						$sqlScript .= ");\n";
+					}
+				}
+				
+				$sqlScript .= "\n"; 
+
+			}
+			if(!empty($sqlScript))
+			{
+				
+				echo "Backup FIle Generated Successfully..<br>";
+				echo "Downloading..<br>";
+				// Save the SQL script to a backup file
+				$backup_file_name = './temp/'.$DB . '_backup_'.time().'_.sql';
+				$fileHandler = fopen($backup_file_name, 'w+');
+				$number_of_lines = fwrite($fileHandler, $sqlScript);
+				fclose($fileHandler); 
+				return $backup_file_name;
+			}
+			else{
+				throw new \Exception("Unknown Error Occured while creating file.");
+					
+			}
 		}
 	}
