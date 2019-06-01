@@ -121,7 +121,7 @@
 							// Row with values ​​of all columns in a row of Excel sheet 
 							$values = array();
 
-							// Перебираем столбцы листа Excel
+							//iterate through the columns of the Excel sheet
 							for ($column = 0; $column < $columns_count; $column++) {
 								if (in_array($column, $ignore_columns)) {
 									continue;
