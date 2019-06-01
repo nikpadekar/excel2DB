@@ -44,7 +44,6 @@
 				global $type_map;
 				// Number of columns on Excel sheet
 				$columns_count = \PHPExcel_Cell::columnIndexFromString($worksheet->getHighestColumn());
-
 				
 				// If an array is passed as the column name, then we check its compliance with the number of columns 
 				if ($columns_names) {
@@ -179,11 +178,12 @@
 		function excel_to_mysql_by_index($table_name, $index, $columns_names, $start_row_index, $table_types) {
 			// Load the Excel file
 			$PHPExcel_file = \PHPExcel_IOFactory::load($this->excel_file);
-
-			// Выбираем лист Excel
-			$PHPExcel_file->setActiveSheetIndex($index);
-
-			return $this->excel_to_mysql($PHPExcel_file->getActiveSheet(), $table_name, $columns_names, $start_row_index, $table_types);
+			$sheetNames = $PHPExcel_file->getSheetNames();
+			if(!in_array($table_name, $sheetNames)){
+				throw new \Exception("Sheet ".$table_name." not found.");
+			}
+			$activeSheet  = $PHPExcel_file->getSheetByName($table_name);
+			return $this->excel_to_mysql($activeSheet, $table_name, $columns_names, $start_row_index, $table_types);
 		}
 
 		

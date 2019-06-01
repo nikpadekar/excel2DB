@@ -2,10 +2,10 @@
 require_once __DIR__ . "/mySQLConn.php";
 require_once __DIR__ . "/PHPExcel/Classes/PHPExcel.php";
 require_once __DIR__ . "/library/excel_mysql.php";
-$target_dir = "uploads/";
-$target_file = $target_dir . basename($_FILES["fileToUpload"]["name"]);
-$uploadOk = 1;
-$imageFileType = strtolower(pathinfo($target_file,PATHINFO_EXTENSION));
+// $target_dir = "uploads/";
+// $target_file = $target_dir . basename($_FILES["fileToUpload"]["name"]);
+// $uploadOk = 1;
+// $imageFileType = strtolower(pathinfo($target_file,PATHINFO_EXTENSION));
 // Check if image file is a actual image or fake image
 $mimes = array('application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/xls','text/xlsx');
 if(isset($_POST["submit"])) {
@@ -14,13 +14,21 @@ if(isset($_POST["submit"])) {
 		try{
 			$objPHPExcel = PHPExcel_IOFactory::load($_FILES["fileToUpload"]["tmp_name"]);
 			$fileName = pathinfo($_FILES["fileToUpload"]["name"], PATHINFO_FILENAME); // returns file name
-			$allDataInSheet = $objPHPExcel->getSheetByName('templete')->toArray(Null);
+			$sheetNames = $objPHPExcel->getSheetNames();
+			if(!in_array('template', $sheetNames)){
+				throw new \Exception("Sheet : `template` not found.[case sensitive]");
+			}
+			$allDataInSheet = $objPHPExcel->getSheetByName('template');
+			$columns_count = \PHPExcel_Cell::columnIndexFromString($allDataInSheet->getHighestColumn());
+			$allDataInSheet = $allDataInSheet->toArray(Null);
+			if($columns_count < 1) throw new \Exception("Uploaded file template is not valid");
+			
 			$arrayCount = count($allDataInSheet);  // Here get total count of row in that Excel sheet
 			$rowIndex=2;
 			$nullLineIndex=0;
 			$sheetNo=1;
 			//if db name in template is default or null then file name will be taken else value given in template is taken for DB creation
-			$DB_Info_from_template  = (strtolower($allDataInSheet[0][1]) == "default" || strtolower($allDataInSheet[0][1]) == Null) ? $fileName : $allDataInSheet[0][1];
+			$DB_Info_from_template  = ($allDataInSheet[0][1] == "" || strtolower($allDataInSheet[0][1]) == "default" || strtolower($allDataInSheet[0][1]) == Null ) ? $fileName : $allDataInSheet[0][1];
 			echo "Data base Name : ".$DB_Info_from_template;
 			echo "<br>";
 			// Change database to "test"
