@@ -64,7 +64,7 @@ if(isset($_POST["submit"])) {
 					$nullLineIndex++;
 					if($nullLineIndex==3){
 						echo "Creating Table for sheet ".$table_name."<br>";
-						echo $excel_mysqlt->excel_to_mysql_by_index($table_name, $sheetNo, $columns_names, $start_row_index = 2, false, false, false, $table_types) ? "OK\n" : "FAIL\n";
+						echo $excel_mysqlt->excel_to_mysql_by_index($table_name, $sheetNo, $columns_names, $start_row_index = 2, $table_types) ? "OK\n" : "FAIL\n";
 						echo "<br><br>";
 						$sheetNo++;
 						$rowIndex++;
