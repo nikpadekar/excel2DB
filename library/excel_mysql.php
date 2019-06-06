@@ -34,7 +34,7 @@
 		}
 
 		private
-		function excel_to_mysql($worksheet, $table_name, $columns_names, $start_row_index, $table_types) {
+		function x2sqlMain($worksheet, $table_name, $columns_names, $start_row_index, $table_types) {
 			$columns_names = array_map('strtolower', array_map('trim',array_filter($columns_names)));
 			$table_types = array_map('strtolower', array_map('trim',array_filter($table_types)));
 			// Check MySQL Connection 
@@ -175,7 +175,7 @@
 		}
 
 		public
-		function excel_to_mysql_by_index($table_name, $columns_names, $table_types) {
+		function x2sql($table_name, $columns_names, $table_types) {
 			// Load the Excel file
 			$PHPExcel_file = \PHPExcel_IOFactory::load($this->excel_file);
 			$sheetNames = $PHPExcel_file->getSheetNames();
@@ -183,7 +183,7 @@
 				throw new \Exception("Sheet ".$table_name." not found.");
 			}
 			$activeSheet  = $PHPExcel_file->getSheetByName($table_name);
-			return $this->excel_to_mysql($activeSheet, $table_name, $columns_names, $start_row_index=2, $table_types);
+			return $this->x2sqlMain($activeSheet, $table_name, $columns_names, $start_row_index=2, $table_types);
 		}
 
 		
@@ -238,25 +238,25 @@
 		 */ 
 		public
 		function createSQLScript($DB){
-			$sqlScript = "";
+			$sqlScriptString = "";
 			$tables = $this->getTableArray();
 			$conn = $this->getConnection();
-			$sqlScript .= "\n\nDROP DATABASE ".$DB.";\n\n";
-			// Prepare SQLscript for creating Database structure
+			$sqlScriptString .= "\n\nDROP DATABASE ".$DB.";\n\n";
+			// Prepare sqlScriptString for creating Database structure
 			$query = "SHOW CREATE SCHEMA IF NOT EXISTS $DB";
 			$result = mysqli_query($conn, $query);
 			$row = mysqli_fetch_row($result);
-			$sqlScript .= "\n\n" . $row[1] . ";\nUSE `".$DB."`;\n\n";
+			$sqlScriptString .= "\n\n" . $row[1] . ";\nUSE `".$DB."`;\n\n";
 
 			foreach ($tables as $table) {
 			
 				
-				// Prepare SQLscript for creating table structure
+				// Prepare sqlScriptString for creating table structure
 				$query = "SHOW CREATE TABLE $table";
 				$result = mysqli_query($conn, $query);
 				$row = mysqli_fetch_row($result);
 				
-				$sqlScript .= "\n\n" . $row[1] . ";\n\n";
+				$sqlScriptString .= "\n\n" . $row[1] . ";\n\n";
 				
 				
 				$query = "SELECT * FROM $table";
@@ -264,38 +264,38 @@
 				
 				$columnCount = mysqli_num_fields($result);
 				
-				// Prepare SQLscript for dumping data for each table
+				// Prepare sqlScriptString for dumping data for each table
 				for ($i = 0; $i < $columnCount; $i ++) {
 					while ($row = mysqli_fetch_row($result)) {
-						$sqlScript .= "INSERT INTO $table VALUES(";
+						$sqlScriptString .= "INSERT INTO $table VALUES(";
 						for ($j = 0; $j < $columnCount; $j ++) {
 							$row[$j] = $row[$j];
 							
 							if (isset($row[$j])) {
-								$sqlScript .= '"' . $row[$j] . '"';
+								$sqlScriptString .= '"' . $row[$j] . '"';
 							} else {
-								$sqlScript .= '""';
+								$sqlScriptString .= '""';
 							}
 							if ($j < ($columnCount - 1)) {
-								$sqlScript .= ',';
+								$sqlScriptString .= ',';
 							}
 						}
-						$sqlScript .= ");\n";
+						$sqlScriptString .= ");\n";
 					}
 				}
 				
-				$sqlScript .= "\n"; 
+				$sqlScriptString .= "\n"; 
 
 			}
-			if(!empty($sqlScript))
+			if(!empty($sqlScriptString))
 			{
 				
 				echo "Backup FIle Generated Successfully..<br>";
 				echo "Downloading..<br>";
 				// Save the SQL script to a backup file
-				$backup_file_name = './temp/'.$DB . '_backup_'.time().'_.sql';
+				$backup_file_name = './temp/'.$DB . '_backup_'.time().'.sql';
 				$fileHandler = fopen($backup_file_name, 'w+');
-				$number_of_lines = fwrite($fileHandler, $sqlScript);
+				$number_of_lines = fwrite($fileHandler, $sqlScriptString);
 				fclose($fileHandler); 
 				return $backup_file_name;
 			}
