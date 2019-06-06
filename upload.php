@@ -2,11 +2,7 @@
 require_once __DIR__ . "/mySQLConn.php";
 require_once __DIR__ . "/PHPExcel/Classes/PHPExcel.php";
 require_once __DIR__ . "/library/excel_mysql.php";
-$target_dir = "uploads/";
-$target_file = $target_dir . basename($_FILES["fileToUpload"]["name"]);
-$uploadOk = 1;
-$imageFileType = strtolower(pathinfo($target_file,PATHINFO_EXTENSION));
-// Check if image file is a actual image or fake image
+
 $mimes = array('application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/xls','text/xlsx');
 if(isset($_POST["submit"])) {
 	if(in_array($_FILES["fileToUpload"]["type"],$mimes)){
@@ -14,13 +10,21 @@ if(isset($_POST["submit"])) {
 		try{
 			$objPHPExcel = PHPExcel_IOFactory::load($_FILES["fileToUpload"]["tmp_name"]);
 			$fileName = pathinfo($_FILES["fileToUpload"]["name"], PATHINFO_FILENAME); // returns file name
-			$allDataInSheet = $objPHPExcel->getSheetByName('templete')->toArray(Null);
+			$sheetNames = $objPHPExcel->getSheetNames();
+			if(!in_array('template', $sheetNames)){
+				throw new \Exception("Sheet : `template` not found.[case sensitive]");
+			}
+			$allDataInSheet = $objPHPExcel->getSheetByName('template');
+			$columns_count = \PHPExcel_Cell::columnIndexFromString($allDataInSheet->getHighestColumn());
+			if($columns_count <= 1) throw new \Exception("template is not valid ");
+			$allDataInSheet = $allDataInSheet->toArray(Null);
+			
 			$arrayCount = count($allDataInSheet);  // Here get total count of row in that Excel sheet
 			$rowIndex=2;
 			$nullLineIndex=0;
 			$sheetNo=1;
 			//if db name in template is default or null then file name will be taken else value given in template is taken for DB creation
-			$DB_Info_from_template  = (strtolower($allDataInSheet[0][1]) == "default" || strtolower($allDataInSheet[0][1]) == Null) ? $fileName : $allDataInSheet[0][1];
+			$DB_Info_from_template  = ($allDataInSheet[0][1] == "" || strtolower($allDataInSheet[0][1]) == "default" || strtolower($allDataInSheet[0][1]) == Null ) ? $fileName : $allDataInSheet[0][1];
 			echo "Data base Name : ".$DB_Info_from_template;
 			echo "<br>";
 			// Change database to "test"
@@ -55,23 +59,32 @@ if(isset($_POST["submit"])) {
 				mysqli_select_db($conn,$DB_Info_from_template);
 				$excel_mysqlt = new Excel_mysql($conn, $_FILES["fileToUpload"]["tmp_name"]);
 				echo "<br>";
+				$tablesArr = array();
 				while($arrayCount>= $rowIndex){
 					$table_name= $allDataInSheet[$rowIndex-2][1];
 					$columns_names=$allDataInSheet[$rowIndex-1];
-					// $start_row_index=
 					$table_types=$allDataInSheet[$rowIndex];
-					// var_dump(array_filter($allDataInSheet[$rowIndex]));
 					$nullLineIndex++;
 					if($nullLineIndex==3){
 						echo "Creating Table for sheet ".$table_name."<br>";
-						echo $excel_mysqlt->excel_to_mysql_by_index($table_name, $sheetNo, $columns_names, $start_row_index = 2, false, false, false, $table_types) ? "OK\n" : "FAIL\n";
+						echo $excel_mysqlt->x2sql($table_name,$columns_names, $table_types) ? "OK\n" : "FAIL\n";
 						echo "<br><br>";
+						array_push($tablesArr,$table_name);
 						$sheetNo++;
 						$rowIndex++;
 						$nullLineIndex=0;
 					}
 					$rowIndex++;
 				}
+				echo "DataBase `".$DB_Info_from_template."` Has Been Created Successfully.<br>";
+				echo "Generating MySQL Backup FIle..<br>";
+				$excel_mysqlt->setTableArray($tablesArr);
+				
+				$backup_file_name = $excel_mysqlt->createSQLScript($DB_Info_from_template);
+				echo '<script type="text/javascript">'; 
+				echo 'window.location= "'.$backup_file_name.'";';
+				echo '</script>'; 
+				
 			}
 		} catch(Exception $e) {
             die('<br>Error Occured :-<br> '.$e->getMessage());
